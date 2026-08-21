@@ -41,9 +41,47 @@
   }
 
   main {
+    position: relative;
+    z-index: 1;
     max-width: 38rem;
     margin: 0 auto;
     padding: clamp(3.5rem, 12vh, 8rem) 1.5rem 5rem;
+  }
+
+  /* --- night sky: stars along the top and sides, one crescent moon --- */
+
+  .sky {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .star {
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    border-radius: 50%;
+    background: var(--ink);
+    opacity: 0.35;
+    animation: twinkle 4s ease-in-out infinite alternate;
+  }
+
+  @keyframes twinkle {
+    from { opacity: 0.12; }
+    to   { opacity: 0.9; }
+  }
+
+  .moon {
+    position: absolute;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 50%;
+    box-shadow: inset -0.6rem -0.28rem 0 -0.1rem var(--ink);
+    transform: rotate(-18deg);
+    opacity: 0.75;
+    filter: drop-shadow(0 0 10px rgba(150, 150, 255, 0.35));
   }
 
   /* --- header --- */
@@ -211,6 +249,7 @@
 
   @media (prefers-reduced-motion: reduce) {
     .fade { opacity: 1; animation: none; }
+    .star { opacity: 0.4; animation: none; }
     a { transition: none; }
   }
 
@@ -221,6 +260,8 @@
 </head>
 
 <body>
+<div class="sky" aria-hidden="true"></div>
+
 <main>
 
   <header class="fade">
@@ -299,6 +340,65 @@
 </main>
 
 <script>
+  /* --- stars and moon: a frame around the column, never behind the words --- */
+
+  const sky = document.querySelector('.sky');
+  const COLUMN = 608;  /* main's 38rem, matching the CSS */
+  const TOP_BAND = 110;
+
+  function star(x, y) {
+    const el = document.createElement('div');
+    const size = 1 + Math.random() * 1.4;
+    el.className = 'star';
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    el.style.width = el.style.height = size.toFixed(2) + 'px';
+    el.style.animationDuration = (2.4 + Math.random() * 4.2).toFixed(2) + 's';
+    el.style.animationDelay = (-Math.random() * 6).toFixed(2) + 's';
+    return el;
+  }
+
+  function drawSky() {
+    const width = sky.clientWidth;
+    const height = sky.clientHeight;
+    const margin = Math.max(0, (width - COLUMN) / 2);
+    const stars = document.createDocumentFragment();
+
+    /* the top band, skipping the patch of sky the name sits in */
+    for (let i = 0; i < Math.round(width / 20); i++) {
+      const x = Math.random() * width;
+      const y = Math.random() * TOP_BAND;
+      if (y > 52 && margin > 0 && x > margin && x < width - margin) continue;
+      stars.appendChild(star(x, y));
+    }
+
+    /* both side margins, mirrored but not identical */
+    if (margin > 30) {
+      for (let i = 0; i < Math.round(margin * height / 4600); i++) {
+        const x = Math.random() * margin;
+        const y = TOP_BAND + Math.random() * (height - TOP_BAND);
+        stars.appendChild(star(x, y));
+        stars.appendChild(star(width - Math.random() * margin, y + (Math.random() - 0.5) * 80));
+      }
+    }
+
+    const moon = document.createElement('div');
+    moon.className = 'moon';
+    moon.style.right = Math.min(margin + 24, Math.max(24, width * 0.08)) + 'px';
+    moon.style.top = '2.75rem';
+    stars.appendChild(moon);
+
+    sky.replaceChildren(stars);
+  }
+
+  drawSky();
+
+  let redraw;
+  addEventListener('resize', () => {
+    clearTimeout(redraw);
+    redraw = setTimeout(drawSky, 200);
+  });
+
   const tabs = Array.from(document.querySelectorAll('.tab'));
 
   function select(tab, focus) {
