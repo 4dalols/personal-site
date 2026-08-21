@@ -21,6 +21,12 @@
     --rule:   #5e5e8c;
     --accent: #FFF;
 
+    /* the same halo the stars and moon wear */
+    --glow:
+      0 0 2px rgba(228, 228, 255, 0.7),
+      0 0 8px rgba(150, 150, 255, 0.5),
+      0 0 18px rgba(150, 150, 255, 0.3);
+
     --serif: "Spectral", Georgia, "Times New Roman", serif;
     --mono:  "Google Sans Code", ui-monospace, Menlo, monospace;
   }
@@ -206,12 +212,13 @@
     color: inherit;
     text-decoration: none;
     border-bottom: 1px solid var(--rule);
-    transition: color 160ms ease, border-color 160ms ease;
+    transition: color 160ms ease, border-color 160ms ease, text-shadow 160ms ease;
   }
 
   a:hover {
     color: var(--accent);
     border-bottom-color: var(--accent);
+    text-shadow: var(--glow);
   }
 
   a:focus-visible {
@@ -270,12 +277,21 @@
   @media (prefers-reduced-motion: reduce) {
     .fade { opacity: 1; animation: none; }
     .star { opacity: 0.4; animation: none; }
-    a { transition: none; }
+    a, .addr { transition: none; }
   }
 
   /* --- email font --- */
 
-  .addr { color: var(--muted); font-family: var(--mono); }
+  .addr {
+    color: var(--muted);
+    font-family: var(--mono);
+    transition: color 160ms ease, text-shadow 160ms ease;
+  }
+
+  .addr:hover {
+    color: var(--accent);
+    text-shadow: var(--glow);
+  }
 </style>
 </head>
 
