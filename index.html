@@ -733,7 +733,69 @@
   }
 
   drawSky();
+<<<<<<< Updated upstream
   if (!matchMedia('(prefers-reduced-motion: reduce)').matches) requestAnimationFrame(tick);
+=======
+
+  /* --- shooting stars: rare, and only where the sky is empty --- */
+
+  const calm = matchMedia('(prefers-reduced-motion: reduce)');
+
+  /* lanes are viewport coordinates the text column does not occupy */
+  function lanes() {
+    const box = column.getBoundingClientRect();
+    const padding = parseFloat(getComputedStyle(column).paddingTop) || 0;
+    const found = [];
+
+    if (box.left > 120) found.push({ x0: 8, x1: box.left - 8, y0: 0, y1: innerHeight, away: -1 });
+    if (innerWidth - box.right > 120) {
+      found.push({ x0: box.right + 8, x1: innerWidth - 8, y0: 0, y1: innerHeight, away: 1 });
+    }
+
+    const band = Math.min(box.top + padding - GAP, innerHeight);
+    if (band > 140) {
+      found.push({ x0: 8, x1: innerWidth - 8, y0: 0, y1: band, away: rand() < 0.5 ? -1 : 1 });
+    }
+    return found;
+  }
+
+  function shoot() {
+    const open = lanes();
+    if (!open.length) return;
+
+    const lane = open[Math.floor(rand() * open.length)];
+    const room = lane.x1 - lane.x0;
+    const drop = lane.y1 - lane.y0;
+
+    const x0 = lane.away < 0 ? lane.x1 - rand() * room * 0.3 : lane.x0 + rand() * room * 0.3;
+    const y0 = lane.y0 + rand() * drop * 0.35;
+    const dx = lane.away * Math.min(room * 0.8, 90 + rand() * 130);
+    const dy = Math.min(lane.y1 - y0 - 8, Math.abs(dx) * (1.2 + rand() * 1.4));
+    if (dy < 60) return;
+
+    const el = document.createElement('div');
+    el.className = 'shooting';
+    el.style.width = (70 + rand() * 70).toFixed(0) + 'px';
+    el.style.setProperty('--x0', x0.toFixed(1) + 'px');
+    el.style.setProperty('--y0', y0.toFixed(1) + 'px');
+    el.style.setProperty('--x1', (x0 + dx).toFixed(1) + 'px');
+    el.style.setProperty('--y1', (y0 + dy).toFixed(1) + 'px');
+    el.style.setProperty('--angle', (Math.atan2(dy, dx) * 180 / Math.PI).toFixed(1) + 'deg');
+    el.style.setProperty('--dur', (700 + rand() * 600).toFixed(0) + 'ms');
+    el.addEventListener('animationend', () => el.remove());
+    document.body.appendChild(el);
+  }
+
+  /* long, uneven gaps: the sky should feel still until it isn't */
+  function shootSoon() {
+    setTimeout(() => {
+      if (!calm.matches && !document.hidden) shoot();
+      shootSoon();
+    }, 1000);
+  }
+
+  shootSoon();
+>>>>>>> Stashed changes
 
   let redraw;
   function redrawSoon() {
