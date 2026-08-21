@@ -66,28 +66,54 @@
     color: var(--muted);
   }
 
-  /* --- sections: mono label in the margin, prose beside it --- */
+  /* --- tabs: mono labels above the prose --- */
 
-  .row {
-    display: grid;
-    grid-template-columns: 7rem 1fr;
-    gap: 2rem;
-    padding: 2.25rem 0;
+  .tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 1.75rem;
+    margin-top: 3.25rem;
+    padding-top: 1.75rem;
     border-top: 1px solid var(--rule);
   }
 
-  .row:first-of-type { margin-top: 3.25rem; }
-
-  .label {
+  .tab {
+    appearance: none;
     margin: 0;
-    padding-top: 0.4rem;
+    padding: 0.35rem 0;
+    border: 0;
+    border-bottom: 1px solid transparent;
+    background: none;
+    color: var(--muted);
     font-family: var(--mono);
     font-size: 0.6875rem;
     font-weight: 500;
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: var(--muted);
+    cursor: pointer;
+    transition: color 160ms ease, border-color 160ms ease;
   }
+
+  .tab:hover { color: var(--ink); }
+
+  .tab[aria-selected="true"] {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  .tab:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 1px;
+  }
+
+  .panel {
+    padding: 2.25rem 0 0;
+  }
+
+  .panel[hidden] { display: none; }
+
+  .panel:focus-visible { outline: none; }
 
   .prose > p { margin: 0 0 1.1rem; }
   .prose > p:last-child { margin-bottom: 0; }
@@ -136,12 +162,8 @@
   /* --- mobile --- */
 
   @media (max-width: 40rem) {
-    .row {
-      grid-template-columns: 1fr;
-      gap: 0.85rem;
-      padding: 1.9rem 0;
-    }
-    .label { padding-top: 0; }
+    .tabs { gap: 0 1.25rem; }
+    .panel { padding-top: 1.9rem; }
   }
 
   /* --- one quiet load sequence --- */
@@ -208,8 +230,14 @@
     <p class="tagline">Triangulating</p>
   </header>
 
-  <section class="row fade">
-    <h2 class="label">Now</h2>
+  <nav class="tabs fade" role="tablist" aria-label="Sections">
+    <button class="tab" type="button" role="tab" id="tab-now" aria-controls="panel-now" aria-selected="true">Now</button>
+    <button class="tab" type="button" role="tab" id="tab-before" aria-controls="panel-before" aria-selected="false" tabindex="-1">Before</button>
+    <button class="tab" type="button" role="tab" id="tab-beforer" aria-controls="panel-beforer" aria-selected="false" tabindex="-1">Beforer</button>
+    <button class="tab" type="button" role="tab" id="tab-elsewhere" aria-controls="panel-elsewhere" aria-selected="false" tabindex="-1">Elsewhere</button>
+  </nav>
+
+  <section class="panel fade" role="tabpanel" id="panel-now" aria-labelledby="tab-now" tabindex="0">
     <div class="prose">
       <p>
         I'm a CS student at <a href="https://www.mit.edu">MIT</a>, currently interning
@@ -222,14 +250,12 @@
     </div>
   </section>
 
-  <section class="row fade">
-    <h2 class="label">Before</h2>
+  <section class="panel" role="tabpanel" id="panel-before" aria-labelledby="tab-before" tabindex="0" hidden>
     <div class="prose">
       <p>
         Previously I interned at <a href="https://www.abbvie.com">AbbVie</a>, where I worked on statistical 
         analysis of proteomics and evaluating frontier deep learning models trained on PK data. 
       </p>
-    <div class="prose">
       <p><details class="reveal"><summary>Some favorites:</summary>
         <p>song artist: <a href="https://www.lynlapidmusic.com">Lyn Lapid</a></p>
         <p>movie: <a href="https://www.imdb.com/title/tt5323662/">A Silent Voice</a></p>
@@ -238,11 +264,9 @@
         <p>wip...</p>
       </details></p>
     </div>
-    </div>
   </section>
 
-  <section class="row fade">
-    <h2 class="label">Beforer</h2>
+  <section class="panel" role="tabpanel" id="panel-beforer" aria-labelledby="tab-beforer" tabindex="0" hidden>
     <div class="prose">
       <p class="awards">
         <a href="https://stats.ioinformatics.org/people/9089">IOI Gold</a> ·
@@ -252,8 +276,7 @@
     </div>
   </section>
 
-  <section class="row fade">
-    <h2 class="label">Elsewhere</h2>
+  <section class="panel" role="tabpanel" id="panel-elsewhere" aria-labelledby="tab-elsewhere" tabindex="0" hidden>
     <div class="elsewhere">
       <a href="https://github.com/jonathan-lq">GitHub</a>
       <a href="https://www.instagram.com/4dalols__/">IG</a>
@@ -265,5 +288,36 @@
   <footer class="fade">Last updated August 2026</footer>
 
 </main>
+
+<script>
+  const tabs = Array.from(document.querySelectorAll('.tab'));
+
+  function select(tab, focus) {
+    for (const other of tabs) {
+      const selected = other === tab;
+      other.setAttribute('aria-selected', String(selected));
+      other.tabIndex = selected ? 0 : -1;
+      document.getElementById(other.getAttribute('aria-controls')).hidden = !selected;
+    }
+    if (focus) tab.focus();
+    history.replaceState(null, '', '#' + tab.id.replace('tab-', ''));
+  }
+
+  for (const tab of tabs) {
+    tab.addEventListener('click', () => select(tab));
+  }
+
+  document.querySelector('.tabs').addEventListener('keydown', (event) => {
+    const step = { ArrowLeft: -1, ArrowRight: 1, Home: -tabs.length, End: tabs.length }[event.key];
+    if (step === undefined) return;
+    event.preventDefault();
+    const from = tabs.indexOf(document.activeElement);
+    const index = Math.min(Math.max(from + step, 0), tabs.length - 1);
+    select(tabs[index], true);
+  });
+
+  const fromHash = tabs.find((tab) => tab.id === 'tab-' + location.hash.slice(1));
+  if (fromHash) select(fromHash);
+</script>
 </body>
 </html>
