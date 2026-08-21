@@ -115,6 +115,32 @@
 
   .panel:focus-visible { outline: none; }
 
+  /* --- sections: mono label in the margin, prose beside it --- */
+
+  .row {
+    display: grid;
+    grid-template-columns: 7rem 1fr;
+    gap: 2rem;
+    padding: 2.25rem 0;
+    border-top: 1px solid var(--rule);
+  }
+
+  .row:first-child {
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .label {
+    margin: 0;
+    padding-top: 0.4rem;
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
   .prose > p { margin: 0 0 1.1rem; }
   .prose > p:last-child { margin-bottom: 0; }
 
@@ -164,6 +190,12 @@
   @media (max-width: 40rem) {
     .tabs { gap: 0 1.25rem; }
     .panel { padding-top: 1.9rem; }
+    .row {
+      grid-template-columns: 1fr;
+      gap: 0.85rem;
+      padding: 1.9rem 0;
+    }
+    .label { padding-top: 0; }
   }
 
   /* --- one quiet load sequence --- */
@@ -189,32 +221,6 @@
     a { transition: none; }
   }
 
-  /* --- text reveal block --- */
-
-  /* .reveal {
-    display: inline;
-  } */
-
-  .reveal summary {
-    display: inline;
-    list-style: none;
-    cursor: pointer;
-    border-bottom: 1px dotted var(--muted);
-  }
-
-  .reveal summary::-webkit-details-marker {
-    display: none;
-  }
-
-  .reveal summary:hover {
-    color: var(--accent);
-    border-bottom-color: var(--accent);
-  }
-
-  .reveal[open] summary {
-    border-bottom-color: transparent;
-  }
-
   /* --- email font --- */
 
   .addr { color: var(--muted); font-family: var(--mono); }
@@ -231,57 +237,69 @@
   </header>
 
   <nav class="tabs fade" role="tablist" aria-label="Sections">
-    <button class="tab" type="button" role="tab" id="tab-now" aria-controls="panel-now" aria-selected="true">Now</button>
-    <button class="tab" type="button" role="tab" id="tab-before" aria-controls="panel-before" aria-selected="false" tabindex="-1">Before</button>
-    <button class="tab" type="button" role="tab" id="tab-beforer" aria-controls="panel-beforer" aria-selected="false" tabindex="-1">Beforer</button>
-    <button class="tab" type="button" role="tab" id="tab-elsewhere" aria-controls="panel-elsewhere" aria-selected="false" tabindex="-1">Elsewhere</button>
+    <button class="tab" type="button" role="tab" id="tab-home" aria-controls="panel-home" aria-selected="true">Home</button>
+    <button class="tab" type="button" role="tab" id="tab-favorites" aria-controls="panel-favorites" aria-selected="false" tabindex="-1">Favorites</button>
   </nav>
 
-  <section class="panel fade" role="tabpanel" id="panel-now" aria-labelledby="tab-now" tabindex="0">
-    <div class="prose">
-      <p>
-        I'm a CS student at <a href="https://www.mit.edu">MIT</a>, currently interning
-        on the engineering team at <a href="https://www.liquid.trade">Liquid Trading</a>, where I'm
-        building the notification infrastructure. 
-      </p>
-      <p>
-        I can be reached at <span class="addr">jzhe at mit dot edu</span>.
-      </p>
+  <section class="panel fade" role="tabpanel" id="panel-home" aria-labelledby="tab-home" tabindex="0">
+
+    <div class="row">
+      <h2 class="label">Now</h2>
+      <div class="prose">
+        <p>
+          I'm a CS student at <a href="https://www.mit.edu">MIT</a>, currently interning
+          on the engineering team at <a href="https://www.liquid.trade">Liquid Trading</a>, where I'm
+          building the notification infrastructure. 
+        </p>
+        <p>
+          I can be reached at <span class="addr">jzhe at mit dot edu</span>.
+        </p>
+      </div>
     </div>
+
+    <div class="row">
+      <h2 class="label">Before</h2>
+      <div class="prose">
+        <p>
+          Previously I interned at <a href="https://www.abbvie.com">AbbVie</a>, where I worked on statistical 
+          analysis of proteomics and evaluating frontier deep learning models trained on PK data. 
+        </p>
+      </div>
+    </div>
+
+    <div class="row">
+      <h2 class="label">Beforer</h2>
+      <div class="prose">
+        <p class="awards">
+          <a href="https://stats.ioinformatics.org/people/9089">IOI Gold</a> ·
+          <a href="https://usaco.org/">2x USACO Finalist</a> ·
+          <a href="https://en.wikipedia.org/wiki/Mathematical_Olympiad_Program">MOP</a>
+        </p>
+      </div>
+    </div>
+
+    <div class="row">
+      <h2 class="label">Elsewhere</h2>
+      <div class="elsewhere">
+        <a href="https://github.com/jonathan-lq">GitHub</a>
+        <a href="https://www.instagram.com/4dalols__/">IG</a>
+        <a href="https://www.linkedin.com/in/jonathan-he-3178662aa/">LinkedIn</a>
+        <a href="https://atouchofblurple.substack.com">Substack</a>
+      </div>
+    </div>
+
   </section>
 
-  <section class="panel" role="tabpanel" id="panel-before" aria-labelledby="tab-before" tabindex="0" hidden>
-    <div class="prose">
-      <p>
-        Previously I interned at <a href="https://www.abbvie.com">AbbVie</a>, where I worked on statistical 
-        analysis of proteomics and evaluating frontier deep learning models trained on PK data. 
-      </p>
-      <p><details class="reveal"><summary>Some favorites:</summary>
+  <section class="panel" role="tabpanel" id="panel-favorites" aria-labelledby="tab-favorites" tabindex="0" hidden>
+    <div class="row">
+      <h2 class="label">Favorites</h2>
+      <div class="prose">
         <p>song artist: <a href="https://www.lynlapidmusic.com">Lyn Lapid</a></p>
         <p>movie: <a href="https://www.imdb.com/title/tt5323662/">A Silent Voice</a></p>
         <p>book: <a href="https://www.goodreads.com/en/book/show/135479.Cat_s_Cradle">Cat's Cradle</a></p>
         <p>yt channel: <a href="https://www.youtube.com/channel/UCimiUgDLbi6P17BdaCZpVbg">exurb1a</a></p>
         <p>wip...</p>
-      </details></p>
-    </div>
-  </section>
-
-  <section class="panel" role="tabpanel" id="panel-beforer" aria-labelledby="tab-beforer" tabindex="0" hidden>
-    <div class="prose">
-      <p class="awards">
-        <a href="https://stats.ioinformatics.org/people/9089">IOI Gold</a> ·
-        <a href="https://usaco.org/">2x USACO Finalist</a> ·
-        <a href="https://en.wikipedia.org/wiki/Mathematical_Olympiad_Program">MOP</a>
-      </p>
-    </div>
-  </section>
-
-  <section class="panel" role="tabpanel" id="panel-elsewhere" aria-labelledby="tab-elsewhere" tabindex="0" hidden>
-    <div class="elsewhere">
-      <a href="https://github.com/jonathan-lq">GitHub</a>
-      <a href="https://www.instagram.com/4dalols__/">IG</a>
-      <a href="https://www.linkedin.com/in/jonathan-he-3178662aa/">LinkedIn</a>
-      <a href="https://atouchofblurple.substack.com">Substack</a>
+      </div>
     </div>
   </section>
 
