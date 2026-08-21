@@ -95,6 +95,29 @@
     to   { opacity: 0.9; }
   }
 
+  /* a star a constellation has reached, held at its peak while the figure lasts;
+     important so it outranks the twinkle, which keeps its own time underneath */
+  .star.held {
+    opacity: 0.9 !important;
+  }
+
+  /* --- constellations: a line between two stars that peak together --- */
+
+  .lines {
+    position: absolute;
+    top: 0;
+    left: 0;
+    overflow: visible;
+  }
+
+  .link {
+    fill: none;
+    stroke: var(--ink);
+    stroke-width: 0.9;
+    stroke-linecap: round;
+    filter: drop-shadow(0 0 3px rgba(150, 150, 255, 0.55));
+  }
+
   .moon {
     position: absolute;
     width: 4.5rem;
@@ -277,6 +300,7 @@
   @media (prefers-reduced-motion: reduce) {
     .fade { opacity: 1; animation: none; }
     .star { opacity: 0.4; animation: none; }
+    .lines { display: none; }
     a, .addr { transition: none; }
   }
 
@@ -399,16 +423,32 @@
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   }
 
+  /* every star, with the schedule its twinkle keeps, for the lines to read */
+  const twinklers = [];
+
+  const lines = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  lines.setAttribute('class', 'lines');
+  lines.setAttribute('aria-hidden', 'true');
+
   function star(x, y) {
     const el = document.createElement('div');
     const size = 8 + rand() * 7;
+    const period = 2.4 + rand() * 4.2;
+    const offset = rand() * 6;
     el.className = 'star';
     el.style.left = x + 'px';
     el.style.top = y + 'px';
     el.style.width = el.style.height = size.toFixed(2) + 'px';
     el.style.transform = 'rotate(' + (rand() * 40 - 20).toFixed(1) + 'deg)';
-    el.style.animationDuration = (2.4 + rand() * 4.2).toFixed(2) + 's';
-    el.style.animationDelay = (-rand() * 6).toFixed(2) + 's';
+    el.style.animationDuration = period.toFixed(2) + 's';
+    el.style.animationDelay = (-offset).toFixed(2) + 's';
+    twinklers.push({
+      el,
+      x: x + size / 2,
+      y: y + size / 2,
+      period: period * 1000,
+      offset: offset * 1000
+    });
     return el;
   }
 
@@ -464,6 +504,16 @@
     return svg;
   }
 
+  /* where the words and the moon's halo sit, as of the last draw */
+  let textBox = { left: 0, right: 0, top: 0, bottom: 0 };
+  let moonHalo = { left: 0, right: 0, top: 0, bottom: 0 };
+
+  function clearOfWords(x, y) {
+    const overText = x > textBox.left && x < textBox.right && y > textBox.top && y < textBox.bottom;
+    const overMoon = x > moonHalo.left && x < moonHalo.right && y > moonHalo.top && y < moonHalo.bottom;
+    return !overText && !overMoon;
+  }
+
   /* the sky covers the whole document and scrolls with it, so a star that
      clears the text at rest can never slide under it later */
   function drawSky() {
@@ -502,11 +552,14 @@
       bottom: top + size + 18
     };
 
-    function clear(x, y) {
-      const overText = x > text.left && x < text.right && y > text.top && y < text.bottom;
-      const overMoon = x > halo.left && x < halo.right && y > halo.top && y < halo.bottom;
-      return !overText && !overMoon;
-    }
+    textBox = text;
+    moonHalo = halo;
+    lines.setAttribute('width', width);
+    lines.setAttribute('height', height);
+    twinklers.length = 0;
+    lines.replaceChildren();
+    epoch++;
+    live = 0;
 
     const stars = document.createDocumentFragment();
 
@@ -515,7 +568,7 @@
       for (let i = 0; i < count; i++) {
         const x = x0 + rand() * (x1 - x0);
         const y = y0 + rand() * (y1 - y0);
-        if (clear(x, y)) stars.appendChild(star(x, y));
+        if (clearOfWords(x, y)) stars.appendChild(star(x, y));
       }
     }
 
@@ -526,10 +579,161 @@
     scatter(Math.round(width * (height - text.bottom) / 9000), 0, width, text.bottom, height);
 
     stars.appendChild(moon);
-    sky.replaceChildren(stars);
+    sky.replaceChildren(lines, stars);
+
+    /* the twinkles all start the moment their stars land in the sky */
+    dawn = performance.now();
+    for (const s of twinklers) s.peak = nextPeak(s, dawn);
+  }
+
+  /* --- constellations ---
+
+     twinkle alternates, so a star is brightest half a cycle in and once every
+     cycle after: at period, 3 * period, 5 * period, counting from its own
+     start. When one peaks, a line reaches out to the nearest star about to,
+     and on arrival keeps going: every line bounces on through at least two
+     more stars before the whole figure fades. A star the line has reached
+     holds at full brightness until then, so the line can travel at one
+     steady speed instead of racing to meet the next peak. */
+
+  const REACH = 230;   /* how far a star will look for a partner */
+  const SOON = 200;    /* a partner peaking sooner than this leaves no travel */
+  const LATE = 1900;   /* one peaking later than this is not the same moment */
+  const BOUNCES = 2;   /* hops a figure owes past its first line */
+  const HOPS = 5;      /* and the most it may take before it fades */
+  const SPEED = 0.10;  /* px per ms, the same for every stretch */
+  const AT_ONCE = 5;
+
+  let dawn = performance.now();
+  let epoch = 0;
+  let live = 0;
+
+  function nextPeak(s, now) {
+    const age = now - dawn + s.offset;
+    const cycles = Math.max(0, Math.ceil((age / s.period - 1) / 2));
+    return dawn - s.offset + s.period * (1 + 2 * cycles);
+  }
+
+  /* a line only goes where a star could have gone: clear of the words */
+  function unobstructed(from, to) {
+    for (let i = 0; i <= 10; i++) {
+      const x = from.x + (to.x - from.x) * i / 10;
+      const y = from.y + (to.y - from.y) * i / 10;
+      if (!clearOfWords(x, y)) return false;
+    }
+    return true;
+  }
+
+  /* the nearest star about to peak; insisting takes the nearest one either
+     way, for a bounce the figure still owes when nothing is timed right */
+  function partnerFor(from, now, insist) {
+    let best = null;
+    let nearest = insist ? REACH * 1.6 : REACH;
+    for (const to of twinklers) {
+      const wait = to.peak - now;
+      if (to === from || to.linked) continue;
+      if (!insist && (wait < SOON || wait > LATE)) continue;
+      const span = Math.hypot(to.x - from.x, to.y - from.y);
+      if (span < 12 || span >= nearest || !unobstructed(from, to)) continue;
+      nearest = span;
+      best = to;
+    }
+    return best;
+  }
+
+  /* a figure holds every line it has drawn, then lets go of all of them
+     at once, so the whole shape is on the sky before it fades */
+  function figure(first, second) {
+    const group = document.createElementNS(lines.namespaceURI, 'g');
+    const walked = [first, second];
+    /* a redraw retires every figure mid-flight, so only count down our own */
+    const era = epoch;
+    lines.appendChild(group);
+    first.linked = second.linked = true;
+    /* the star it set out from is at its peak: hold it there */
+    first.el.classList.add('held');
+    live++;
+
+    /* restart from the peak so release does not expose a stale phase */
+    function resumeTwinkle(s) {
+      const now = performance.now();
+      s.el.classList.remove('held');
+      s.el.style.animationName = 'none';
+      void s.el.offsetWidth;
+      s.el.style.animationDelay = (-s.period / 1000).toFixed(2) + 's';
+      s.el.style.animationName = 'twinkle';
+      s.offset = dawn + s.period - now;
+      s.peak = now + 2 * s.period;
+    }
+
+    function release() {
+      group.remove();
+      for (const s of walked) {
+        s.linked = false;
+        resumeTwinkle(s);
+      }
+      if (era === epoch) live--;
+    }
+
+    function hop(from, to) {
+      const el = document.createElementNS(lines.namespaceURI, 'line');
+      const span = Math.hypot(to.x - from.x, to.y - from.y);
+      el.setAttribute('class', 'link');
+      el.setAttribute('x1', from.x.toFixed(1));
+      el.setAttribute('y1', from.y.toFixed(1));
+      el.setAttribute('x2', to.x.toFixed(1));
+      el.setAttribute('y2', to.y.toFixed(1));
+      el.style.strokeDasharray = span.toFixed(1);
+      group.appendChild(el);
+
+      el.animate(
+        [
+          { strokeDashoffset: span, opacity: 0.1 },
+          { strokeDashoffset: 0, opacity: 0.5 }
+        ],
+        { duration: span / SPEED, easing: 'linear', fill: 'forwards' }
+      ).finished.then(() => {
+        /* the star it reached holds its brightness for as long as the figure does */
+        to.el.classList.add('held');
+        onward();
+      }, release);
+    }
+
+    function onward() {
+      const owed = walked.length - 1 < BOUNCES;
+      const next = walked.length - 1 < HOPS
+        ? partnerFor(walked.at(-1), performance.now(), owed)
+        : null;
+
+      if (next) {
+        next.linked = true;
+        hop(walked.at(-1), next);
+        walked.push(next);
+        return;
+      }
+
+      group.animate(
+        [{ opacity: 1 }, { opacity: 0 }],
+        { duration: 1400, easing: 'ease-in', fill: 'forwards' }
+      ).finished.then(release, release);
+    }
+
+    hop(first, second);
+  }
+
+  function tick(now) {
+    for (const s of twinklers) {
+      if (s.peak > now) continue;
+      s.peak += 2 * s.period;
+      if (s.linked || live >= AT_ONCE) continue;
+      const to = partnerFor(s, now, false);
+      if (to) figure(s, to);
+    }
+    requestAnimationFrame(tick);
   }
 
   drawSky();
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) requestAnimationFrame(tick);
 
   let redraw;
   function redrawSoon() {
