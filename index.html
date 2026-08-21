@@ -95,6 +95,23 @@
     to   { opacity: 0.9; }
   }
 
+  /* --- constellations: a line between two stars that peak together --- */
+
+  .lines {
+    position: absolute;
+    top: 0;
+    left: 0;
+    overflow: visible;
+  }
+
+  .link {
+    fill: none;
+    stroke: var(--ink);
+    stroke-width: 0.9;
+    stroke-linecap: round;
+    filter: drop-shadow(0 0 3px rgba(150, 150, 255, 0.55));
+  }
+
   .moon {
     position: absolute;
     width: 4.5rem;
@@ -277,6 +294,7 @@
   @media (prefers-reduced-motion: reduce) {
     .fade { opacity: 1; animation: none; }
     .star { opacity: 0.4; animation: none; }
+    .lines { display: none; }
     a, .addr { transition: none; }
   }
 
@@ -399,16 +417,31 @@
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   }
 
+  /* every star, with the schedule its twinkle keeps, for the lines to read */
+  const twinklers = [];
+
+  const lines = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  lines.setAttribute('class', 'lines');
+  lines.setAttribute('aria-hidden', 'true');
+
   function star(x, y) {
     const el = document.createElement('div');
     const size = 8 + rand() * 7;
+    const period = 2.4 + rand() * 4.2;
+    const offset = rand() * 6;
     el.className = 'star';
     el.style.left = x + 'px';
     el.style.top = y + 'px';
     el.style.width = el.style.height = size.toFixed(2) + 'px';
     el.style.transform = 'rotate(' + (rand() * 40 - 20).toFixed(1) + 'deg)';
-    el.style.animationDuration = (2.4 + rand() * 4.2).toFixed(2) + 's';
-    el.style.animationDelay = (-rand() * 6).toFixed(2) + 's';
+    el.style.animationDuration = period.toFixed(2) + 's';
+    el.style.animationDelay = (-offset).toFixed(2) + 's';
+    twinklers.push({
+      x: x + size / 2,
+      y: y + size / 2,
+      period: period * 1000,
+      offset: offset * 1000
+    });
     return el;
   }
 
@@ -464,6 +497,16 @@
     return svg;
   }
 
+  /* where the words and the moon's halo sit, as of the last draw */
+  let textBox = { left: 0, right: 0, top: 0, bottom: 0 };
+  let moonHalo = { left: 0, right: 0, top: 0, bottom: 0 };
+
+  function clearOfWords(x, y) {
+    const overText = x > textBox.left && x < textBox.right && y > textBox.top && y < textBox.bottom;
+    const overMoon = x > moonHalo.left && x < moonHalo.right && y > moonHalo.top && y < moonHalo.bottom;
+    return !overText && !overMoon;
+  }
+
   /* the sky covers the whole document and scrolls with it, so a star that
      clears the text at rest can never slide under it later */
   function drawSky() {
@@ -502,11 +545,14 @@
       bottom: top + size + 18
     };
 
-    function clear(x, y) {
-      const overText = x > text.left && x < text.right && y > text.top && y < text.bottom;
-      const overMoon = x > halo.left && x < halo.right && y > halo.top && y < halo.bottom;
-      return !overText && !overMoon;
-    }
+    textBox = text;
+    moonHalo = halo;
+    lines.setAttribute('width', width);
+    lines.setAttribute('height', height);
+    twinklers.length = 0;
+    lines.replaceChildren();
+    epoch++;
+    live = 0;
 
     const stars = document.createDocumentFragment();
 
@@ -515,7 +561,7 @@
       for (let i = 0; i < count; i++) {
         const x = x0 + rand() * (x1 - x0);
         const y = y0 + rand() * (y1 - y0);
-        if (clear(x, y)) stars.appendChild(star(x, y));
+        if (clearOfWords(x, y)) stars.appendChild(star(x, y));
       }
     }
 
@@ -526,10 +572,108 @@
     scatter(Math.round(width * (height - text.bottom) / 9000), 0, width, text.bottom, height);
 
     stars.appendChild(moon);
-    sky.replaceChildren(stars);
+    sky.replaceChildren(lines, stars);
+
+    /* the twinkles all start the moment their stars land in the sky */
+    dawn = performance.now();
+    for (const s of twinklers) s.peak = nextPeak(s, dawn);
+  }
+
+  /* --- constellations ---
+
+     twinkle alternates, so a star is brightest half a cycle in and once every
+     cycle after: at period, 3 * period, 5 * period, counting from its own
+     start. When one peaks, a line reaches out to the nearest star about to. */
+
+  const REACH = 230;   /* how far a star will look for a partner */
+  const SOON = 200;    /* a partner peaking sooner than this leaves no travel */
+  const LATE = 1900;   /* one peaking later than this is not the same moment */
+  const AT_ONCE = 7;
+
+  let dawn = performance.now();
+  let epoch = 0;
+  let live = 0;
+
+  function nextPeak(s, now) {
+    const age = now - dawn + s.offset;
+    const cycles = Math.max(0, Math.ceil((age / s.period - 1) / 2));
+    return dawn - s.offset + s.period * (1 + 2 * cycles);
+  }
+
+  /* a line only goes where a star could have gone: clear of the words */
+  function unobstructed(from, to) {
+    for (let i = 0; i <= 10; i++) {
+      const x = from.x + (to.x - from.x) * i / 10;
+      const y = from.y + (to.y - from.y) * i / 10;
+      if (!clearOfWords(x, y)) return false;
+    }
+    return true;
+  }
+
+  function partnerFor(from, now) {
+    let best = null;
+    let nearest = REACH;
+    for (const to of twinklers) {
+      const wait = to.peak - now;
+      if (to === from || to.linked || wait < SOON || wait > LATE) continue;
+      const span = Math.hypot(to.x - from.x, to.y - from.y);
+      if (span < 12 || span >= nearest || !unobstructed(from, to)) continue;
+      nearest = span;
+      best = to;
+    }
+    return best;
+  }
+
+  function link(from, to, travel) {
+    const el = document.createElementNS(lines.namespaceURI, 'line');
+    const span = Math.hypot(to.x - from.x, to.y - from.y);
+    el.setAttribute('class', 'link');
+    el.setAttribute('x1', from.x.toFixed(1));
+    el.setAttribute('y1', from.y.toFixed(1));
+    el.setAttribute('x2', to.x.toFixed(1));
+    el.setAttribute('y2', to.y.toFixed(1));
+    el.style.strokeDasharray = span.toFixed(1);
+    lines.appendChild(el);
+    live++;
+
+    /* a redraw retires every line mid-flight, so only count down our own */
+    const era = epoch;
+    function done() {
+      el.remove();
+      from.linked = to.linked = false;
+      if (era === epoch) live--;
+    }
+
+    /* it arrives just as the far star flares, then lets go */
+    el.animate(
+      [
+        { strokeDashoffset: span, opacity: 0.1 },
+        { strokeDashoffset: 0, opacity: 0.5 }
+      ],
+      { duration: travel, easing: 'ease-out', fill: 'forwards' }
+    ).finished
+      .then(() => el.animate(
+        [{ opacity: 0.5 }, { opacity: 0 }],
+        { duration: 1400, easing: 'ease-in', fill: 'forwards' }
+      ).finished)
+      .then(done, done);
+  }
+
+  function tick(now) {
+    for (const s of twinklers) {
+      if (s.peak > now) continue;
+      s.peak += 2 * s.period;
+      if (s.linked || live >= AT_ONCE) continue;
+      const to = partnerFor(s, now);
+      if (!to) continue;
+      s.linked = to.linked = true;
+      link(s, to, to.peak - now);
+    }
+    requestAnimationFrame(tick);
   }
 
   drawSky();
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) requestAnimationFrame(tick);
 
   let redraw;
   function redrawSoon() {
