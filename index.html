@@ -41,10 +41,68 @@
   }
 
   main {
+    position: relative;
+    z-index: 1;
     max-width: 38rem;
     margin: 0 auto;
     padding: clamp(3.5rem, 12vh, 8rem) 1.5rem 5rem;
   }
+
+  /* --- night sky: stars along the top and sides, one crescent moon --- */
+
+  .sky {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .star {
+    position: absolute;
+    width: 7px;
+    height: 7px;
+    opacity: 0.35;
+    animation: twinkle 4s ease-in-out infinite alternate;
+    filter:
+      drop-shadow(0 0 2px rgba(228, 228, 255, 0.7))
+      drop-shadow(0 0 6px rgba(150, 150, 255, 0.5));
+  }
+
+  /* the point shape lives on a child so the parent's glow isn't clipped away */
+  .star::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--ink);
+    clip-path: polygon(
+      50% 0%, 61% 35%, 98% 35%, 68% 57%,
+      79% 91%, 50% 70%, 21% 91%, 32% 57%,
+      2% 35%, 39% 35%
+    );
+  }
+
+  @keyframes twinkle {
+    from { opacity: 0.12; }
+    to   { opacity: 0.9; }
+  }
+
+  .moon {
+    position: absolute;
+    width: 4.5rem;
+    height: 4.5rem;
+    transform: rotate(-14deg);
+    opacity: 0.9;
+    filter:
+      drop-shadow(0 0 6px rgba(228, 228, 255, 0.9))
+      drop-shadow(0 0 22px rgba(150, 150, 255, 0.75))
+      drop-shadow(0 0 48px rgba(150, 150, 255, 0.45));
+  }
+
+  .moon .lit  { fill: var(--ink); }
+  .moon .disc { fill: var(--ink); opacity: 0.1; }
 
   /* --- header --- */
 
@@ -211,6 +269,7 @@
 
   @media (prefers-reduced-motion: reduce) {
     .fade { opacity: 1; animation: none; }
+    .star { opacity: 0.4; animation: none; }
     a { transition: none; }
   }
 
@@ -221,6 +280,8 @@
 </head>
 
 <body>
+<div class="sky" aria-hidden="true"></div>
+
 <main>
 
   <header class="fade">
@@ -299,6 +360,168 @@
 </main>
 
 <script>
+  /* --- stars and moon: a frame around the column, never behind the words --- */
+
+  const sky = document.querySelector('.sky');
+  const column = document.querySelector('main');
+  const panels = Array.from(document.querySelectorAll('.panel'));
+  const GAP = 10;        /* clearance between the text block and any star */
+  const MOON_SIZE = 72;  /* .moon's 4.5rem */
+  const MOON_TOP = 44;
+
+  /* one seed per page load: a redraw replays the same sky, a refresh picks a new one */
+  const SEED = (Math.random() * 2 ** 32) >>> 0;
+  let state = SEED;
+
+  function rand() {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+
+  function star(x, y) {
+    const el = document.createElement('div');
+    const size = 8 + rand() * 7;
+    el.className = 'star';
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    el.style.width = el.style.height = size.toFixed(2) + 'px';
+    el.style.transform = 'rotate(' + (rand() * 40 - 20).toFixed(1) + 'deg)';
+    el.style.animationDuration = (2.4 + rand() * 4.2).toFixed(2) + 's';
+    el.style.animationDelay = (-rand() * 6).toFixed(2) + 's';
+    return el;
+  }
+
+  /* the taller panel sets the bounds either way, so switching tabs moves nothing */
+  function tallestPanel() {
+    let tallest = 0;
+    for (const panel of panels) {
+      const wasHidden = panel.hidden;
+      panel.hidden = false;
+      tallest = Math.max(tallest, panel.offsetHeight);
+      panel.hidden = wasHidden;
+    }
+    return tallest;
+  }
+
+  /* --- the moon, drawn in whatever phase it is in right now --- */
+
+  const SYNODIC_MONTH = 29.530588853;         /* days from new moon to new moon */
+  const KNOWN_NEW_MOON = Date.UTC(2000, 0, 6, 18, 14);
+
+  /* 0 = new, 0.25 = first quarter, 0.5 = full, 0.75 = last quarter */
+  function moonAge(now) {
+    const days = (now - KNOWN_NEW_MOON) / 86400000;
+    return ((days / SYNODIC_MONTH) % 1 + 1) % 1;
+  }
+
+  /* the lit side is bounded by the limb and by an ellipse of half-width |2k - 1| */
+  function moonTonight(now = Date.now()) {
+    const age = moonAge(now);
+    const lit = (1 - Math.cos(2 * Math.PI * age)) / 2;   /* illuminated fraction */
+    const terminator = Math.abs(2 * lit - 1);
+    const waxing = age < 0.5;
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'moon');
+    svg.setAttribute('viewBox', '-1 -1 2 2');
+    svg.setAttribute('aria-hidden', 'true');
+
+    const disc = document.createElementNS(svg.namespaceURI, 'circle');
+    disc.setAttribute('class', 'disc');
+    disc.setAttribute('r', '1');
+    svg.appendChild(disc);
+
+    const shape = document.createElementNS(svg.namespaceURI, 'path');
+    shape.setAttribute('class', 'lit');
+    shape.setAttribute('d',
+      'M 0,-1 A 1,1 0 0 1 0,1 ' +
+      'A ' + terminator.toFixed(4) + ',1 0 0 ' + (lit > 0.5 ? 1 : 0) + ' 0,-1 Z'
+    );
+    if (!waxing) shape.setAttribute('transform', 'scale(-1 1)');
+    svg.appendChild(shape);
+
+    return svg;
+  }
+
+  /* the sky covers the whole document and scrolls with it, so a star that
+     clears the text at rest can never slide under it later */
+  function drawSky() {
+    state = SEED;
+
+    const width = document.documentElement.clientWidth;
+    /* measure as if the taller panel were open, so the sky is tab-independent */
+    const open = panels.find((panel) => !panel.hidden);
+    const grow = tallestPanel() - (open ? open.offsetHeight : 0);
+    const height = Math.max(document.documentElement.scrollHeight + grow, innerHeight);
+    sky.style.height = height + 'px';
+
+    /* the words, in document coordinates: main minus its empty top padding */
+    const padding = parseFloat(getComputedStyle(column).paddingTop) || 0;
+    const text = {
+      left: column.offsetLeft - GAP,
+      right: column.offsetLeft + column.offsetWidth + GAP,
+      top: column.offsetTop + padding - GAP,
+      bottom: column.offsetTop + column.offsetHeight + grow + GAP
+    };
+
+    const moon = moonTonight();
+    const sideRoom = width - text.right;
+    /* hangs in the right margin when there is one, otherwise tucks above the text */
+    const size = sideRoom > MOON_SIZE + 24 ? MOON_SIZE : Math.min(MOON_SIZE, text.top - 20);
+    const top = Math.max(8, Math.min(MOON_TOP, text.top - size - 8));
+    const inset = Math.max(16, Math.min(sideRoom + 24, width * 0.08));
+    moon.style.width = moon.style.height = size + 'px';
+    moon.style.right = inset + 'px';
+    moon.style.top = top + 'px';
+
+    const halo = {
+      left: width - inset - size - 18,
+      right: width - inset + 18,
+      top: top - 18,
+      bottom: top + size + 18
+    };
+
+    function clear(x, y) {
+      const overText = x > text.left && x < text.right && y > text.top && y < text.bottom;
+      const overMoon = x > halo.left && x < halo.right && y > halo.top && y < halo.bottom;
+      return !overText && !overMoon;
+    }
+
+    const stars = document.createDocumentFragment();
+
+    function scatter(count, x0, x1, y0, y1) {
+      if (x1 - x0 < 16 || y1 - y0 < 16) return;
+      for (let i = 0; i < count; i++) {
+        const x = x0 + rand() * (x1 - x0);
+        const y = y0 + rand() * (y1 - y0);
+        if (clear(x, y)) stars.appendChild(star(x, y));
+      }
+    }
+
+    /* above the words, then down both margins, then below the footer */
+    scatter(Math.round(width / 30), 0, width, 0, text.top);
+    scatter(Math.round(text.left * (text.bottom - text.top) / 9000), 0, text.left, text.top, text.bottom);
+    scatter(Math.round((width - text.right) * (text.bottom - text.top) / 9000), text.right, width, text.top, text.bottom);
+    scatter(Math.round(width * (height - text.bottom) / 9000), 0, width, text.bottom, height);
+
+    stars.appendChild(moon);
+    sky.replaceChildren(stars);
+  }
+
+  drawSky();
+
+  let redraw;
+  function redrawSoon() {
+    clearTimeout(redraw);
+    redraw = setTimeout(drawSky, 200);
+  }
+
+  addEventListener('resize', redrawSoon);
+  addEventListener('load', drawSky);   /* fonts may reflow the column */
+
   const tabs = Array.from(document.querySelectorAll('.tab'));
 
   function select(tab, focus) {
