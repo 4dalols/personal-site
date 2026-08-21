@@ -583,12 +583,17 @@
 
      twinkle alternates, so a star is brightest half a cycle in and once every
      cycle after: at period, 3 * period, 5 * period, counting from its own
-     start. When one peaks, a line reaches out to the nearest star about to. */
+     start. When one peaks, a line reaches out to the nearest star about to,
+     and on arrival keeps going: every line bounces on through at least two
+     more stars before the whole figure fades. */
 
   const REACH = 230;   /* how far a star will look for a partner */
   const SOON = 200;    /* a partner peaking sooner than this leaves no travel */
   const LATE = 1900;   /* one peaking later than this is not the same moment */
-  const AT_ONCE = 7;
+  const BOUNCES = 2;   /* hops a figure owes past its first line */
+  const HOPS = 5;      /* and the most it may take before it fades */
+  const DRIFT = 700;   /* travel for a bounce it has to make on its own */
+  const AT_ONCE = 5;
 
   let dawn = performance.now();
   let epoch = 0;
@@ -610,12 +615,15 @@
     return true;
   }
 
-  function partnerFor(from, now) {
+  /* the nearest star about to peak; insisting takes the nearest one either
+     way, for a bounce the figure still owes when nothing is timed right */
+  function partnerFor(from, now, insist) {
     let best = null;
-    let nearest = REACH;
+    let nearest = insist ? REACH * 1.6 : REACH;
     for (const to of twinklers) {
       const wait = to.peak - now;
-      if (to === from || to.linked || wait < SOON || wait > LATE) continue;
+      if (to === from || to.linked) continue;
+      if (!insist && (wait < SOON || wait > LATE)) continue;
       const span = Math.hypot(to.x - from.x, to.y - from.y);
       if (span < 12 || span >= nearest || !unobstructed(from, to)) continue;
       nearest = span;
@@ -624,39 +632,64 @@
     return best;
   }
 
-  function link(from, to, travel) {
-    const el = document.createElementNS(lines.namespaceURI, 'line');
-    const span = Math.hypot(to.x - from.x, to.y - from.y);
-    el.setAttribute('class', 'link');
-    el.setAttribute('x1', from.x.toFixed(1));
-    el.setAttribute('y1', from.y.toFixed(1));
-    el.setAttribute('x2', to.x.toFixed(1));
-    el.setAttribute('y2', to.y.toFixed(1));
-    el.style.strokeDasharray = span.toFixed(1);
-    lines.appendChild(el);
+  /* a figure holds every line it has drawn, then lets go of all of them
+     at once, so the whole shape is on the sky before it fades */
+  function figure(first, second, travel) {
+    const group = document.createElementNS(lines.namespaceURI, 'g');
+    const walked = [first, second];
+    /* a redraw retires every figure mid-flight, so only count down our own */
+    const era = epoch;
+    lines.appendChild(group);
+    first.linked = second.linked = true;
     live++;
 
-    /* a redraw retires every line mid-flight, so only count down our own */
-    const era = epoch;
-    function done() {
-      el.remove();
-      from.linked = to.linked = false;
+    function release() {
+      group.remove();
+      for (const s of walked) s.linked = false;
       if (era === epoch) live--;
     }
 
-    /* it arrives just as the far star flares, then lets go */
-    el.animate(
-      [
-        { strokeDashoffset: span, opacity: 0.1 },
-        { strokeDashoffset: 0, opacity: 0.5 }
-      ],
-      { duration: travel, easing: 'ease-out', fill: 'forwards' }
-    ).finished
-      .then(() => el.animate(
-        [{ opacity: 0.5 }, { opacity: 0 }],
+    function hop(from, to, reach) {
+      const el = document.createElementNS(lines.namespaceURI, 'line');
+      const span = Math.hypot(to.x - from.x, to.y - from.y);
+      el.setAttribute('class', 'link');
+      el.setAttribute('x1', from.x.toFixed(1));
+      el.setAttribute('y1', from.y.toFixed(1));
+      el.setAttribute('x2', to.x.toFixed(1));
+      el.setAttribute('y2', to.y.toFixed(1));
+      el.style.strokeDasharray = span.toFixed(1);
+      group.appendChild(el);
+
+      /* it arrives just as the far star flares, then travels on from there */
+      el.animate(
+        [
+          { strokeDashoffset: span, opacity: 0.1 },
+          { strokeDashoffset: 0, opacity: 0.5 }
+        ],
+        { duration: reach, easing: 'ease-out', fill: 'forwards' }
+      ).finished.then(onward, release);
+    }
+
+    function onward() {
+      const now = performance.now();
+      const owed = walked.length - 1 < BOUNCES;
+      const next = walked.length - 1 < HOPS ? partnerFor(walked.at(-1), now, owed) : null;
+
+      if (next) {
+        const wait = next.peak - now;
+        next.linked = true;
+        hop(walked.at(-1), next, wait >= SOON && wait <= LATE ? wait : DRIFT);
+        walked.push(next);
+        return;
+      }
+
+      group.animate(
+        [{ opacity: 1 }, { opacity: 0 }],
         { duration: 1400, easing: 'ease-in', fill: 'forwards' }
-      ).finished)
-      .then(done, done);
+      ).finished.then(release, release);
+    }
+
+    hop(first, second, travel);
   }
 
   function tick(now) {
@@ -664,10 +697,8 @@
       if (s.peak > now) continue;
       s.peak += 2 * s.period;
       if (s.linked || live >= AT_ONCE) continue;
-      const to = partnerFor(s, now);
-      if (!to) continue;
-      s.linked = to.linked = true;
-      link(s, to, to.peak - now);
+      const to = partnerFor(s, now, false);
+      if (to) figure(s, to, to.peak - now);
     }
     requestAnimationFrame(tick);
   }
