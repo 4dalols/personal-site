@@ -64,14 +64,24 @@
     position: absolute;
     width: 7px;
     height: 7px;
+    opacity: 0.35;
+    animation: twinkle 4s ease-in-out infinite alternate;
+    filter:
+      drop-shadow(0 0 2px rgba(228, 228, 255, 0.7))
+      drop-shadow(0 0 6px rgba(150, 150, 255, 0.5));
+  }
+
+  /* the point shape lives on a child so the parent's glow isn't clipped away */
+  .star::before {
+    content: '';
+    position: absolute;
+    inset: 0;
     background: var(--ink);
     clip-path: polygon(
       50% 0%, 61% 35%, 98% 35%, 68% 57%,
       79% 91%, 50% 70%, 21% 91%, 32% 57%,
       2% 35%, 39% 35%
     );
-    opacity: 0.35;
-    animation: twinkle 4s ease-in-out infinite alternate;
   }
 
   @keyframes twinkle {
