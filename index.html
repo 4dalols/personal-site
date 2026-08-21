@@ -51,8 +51,10 @@
   /* --- night sky: stars along the top and sides, one crescent moon --- */
 
   .sky {
-    position: fixed;
-    inset: 0;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
     z-index: 0;
     overflow: hidden;
     pointer-events: none;
@@ -351,8 +353,8 @@
   /* --- stars and moon: a frame around the column, never behind the words --- */
 
   const sky = document.querySelector('.sky');
-  const COLUMN = 608;  /* main's 38rem, matching the CSS */
-  const TOP_BAND = 110;
+  const column = document.querySelector('main');
+  const GAP = 10;        /* clearance between the text block and any star */
   const MOON_SIZE = 72;  /* .moon's 4.5rem */
   const MOON_TOP = 44;
 
@@ -409,48 +411,61 @@
     return svg;
   }
 
+  /* the sky covers the whole document and scrolls with it, so a star that
+     clears the text at rest can never slide under it later */
   function drawSky() {
-    const width = sky.clientWidth;
-    const height = sky.clientHeight;
-    const margin = Math.max(0, (width - COLUMN) / 2);
-    const stars = document.createDocumentFragment();
+    const width = document.documentElement.clientWidth;
+    const height = Math.max(document.documentElement.scrollHeight, innerHeight);
+    sky.style.height = height + 'px';
 
-    const moon = moonTonight();
-    const inset = Math.min(margin + 24, Math.max(24, width * 0.08));
-    moon.style.right = inset + 'px';
-    moon.style.top = MOON_TOP + 'px';
-
-    /* keep the sky around the moon clear */
-    const halo = {
-      left: width - inset - MOON_SIZE - 18,
-      right: width - inset + 18,
-      top: MOON_TOP - 18,
-      bottom: MOON_TOP + MOON_SIZE + 18
+    /* the words, in document coordinates: main minus its empty top padding */
+    const padding = parseFloat(getComputedStyle(column).paddingTop) || 0;
+    const text = {
+      left: column.offsetLeft - GAP,
+      right: column.offsetLeft + column.offsetWidth + GAP,
+      top: column.offsetTop + padding - GAP,
+      bottom: column.offsetTop + column.offsetHeight + GAP
     };
 
-    function clear(x, y) {
-      return x < halo.left || x > halo.right || y < halo.top || y > halo.bottom;
+    const moon = moonTonight();
+    const sideRoom = width - text.right;
+    /* hangs in the right margin when there is one, otherwise tucks above the text */
+    const size = sideRoom > MOON_SIZE + 24 ? MOON_SIZE : Math.min(MOON_SIZE, text.top - 20);
+    const top = Math.max(8, Math.min(MOON_TOP, text.top - size - 8));
+    const inset = Math.max(16, Math.min(sideRoom + 24, width * 0.08));
+    moon.style.width = moon.style.height = size + 'px';
+    moon.style.right = inset + 'px';
+    moon.style.top = top + 'px';
+
+    const halo = {
+      left: width - inset - size - 18,
+      right: width - inset + 18,
+      top: top - 18,
+      bottom: top + size + 18
+    };
+
+    function open(x, y) {
+      const overText = x > text.left && x < text.right && y > text.top && y < text.bottom;
+      const overMoon = x > halo.left && x < halo.right && y > halo.top && y < halo.bottom;
+      return !overText && !overMoon;
     }
 
-    /* the top band, skipping the patch of sky the name sits in */
-    for (let i = 0; i < Math.round(width / 34); i++) {
-      const x = Math.random() * width;
-      const y = Math.random() * TOP_BAND;
-      if (y > 52 && margin > 0 && x > margin && x < width - margin) continue;
-      if (clear(x, y)) stars.appendChild(star(x, y));
-    }
+    const stars = document.createDocumentFragment();
 
-    /* both side margins, mirrored but not identical */
-    if (margin > 30) {
-      for (let i = 0; i < Math.round(margin * height / 9000); i++) {
-        const y = TOP_BAND + Math.random() * (height - TOP_BAND);
-        const left = Math.random() * margin;
-        const right = width - Math.random() * margin;
-        const mirrored = y + (Math.random() - 0.5) * 80;
-        if (clear(left, y)) stars.appendChild(star(left, y));
-        if (clear(right, mirrored)) stars.appendChild(star(right, mirrored));
+    function scatter(count, x0, x1, y0, y1) {
+      if (x1 - x0 < 16 || y1 - y0 < 16) return;
+      for (let i = 0; i < count; i++) {
+        const x = x0 + Math.random() * (x1 - x0);
+        const y = y0 + Math.random() * (y1 - y0);
+        if (open(x, y)) stars.appendChild(star(x, y));
       }
     }
+
+    /* above the words, then down both margins, then below the footer */
+    scatter(Math.round(width / 30), 0, width, 0, text.top);
+    scatter(Math.round(text.left * (text.bottom - text.top) / 9000), 0, text.left, text.top, text.bottom);
+    scatter(Math.round((width - text.right) * (text.bottom - text.top) / 9000), text.right, width, text.top, text.bottom);
+    scatter(Math.round(width * (height - text.bottom) / 9000), 0, width, text.bottom, height);
 
     stars.appendChild(moon);
     sky.replaceChildren(stars);
@@ -459,10 +474,13 @@
   drawSky();
 
   let redraw;
-  addEventListener('resize', () => {
+  function redrawSoon() {
     clearTimeout(redraw);
     redraw = setTimeout(drawSky, 200);
-  });
+  }
+
+  addEventListener('resize', redrawSoon);
+  addEventListener('load', drawSky);   /* fonts may reflow the column */
 
   const tabs = Array.from(document.querySelectorAll('.tab'));
 
@@ -480,6 +498,9 @@
   for (const tab of tabs) {
     tab.addEventListener('click', () => select(tab));
   }
+
+  /* switching panels changes the page height */
+  document.querySelector('.tabs').addEventListener('click', drawSky);
 
   document.querySelector('.tabs').addEventListener('keydown', (event) => {
     const step = { ArrowLeft: -1, ArrowRight: 1, Home: -tabs.length, End: tabs.length }[event.key];
