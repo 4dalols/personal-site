@@ -601,7 +601,7 @@
   const LATE = 1900;   /* one peaking later than this is not the same moment */
   const BOUNCES = 2;   /* hops a figure owes past its first line */
   const HOPS = 5;      /* and the most it may take before it fades */
-  const SPEED = 0.16;  /* px per ms, the same for every stretch */
+  const SPEED = 0.10;  /* px per ms, the same for every stretch */
   const AT_ONCE = 5;
 
   let dawn = performance.now();
@@ -654,11 +654,23 @@
     first.el.classList.add('held');
     live++;
 
+    /* restart from the peak so release does not expose a stale phase */
+    function resumeTwinkle(s) {
+      const now = performance.now();
+      s.el.classList.remove('held');
+      s.el.style.animationName = 'none';
+      void s.el.offsetWidth;
+      s.el.style.animationDelay = (-s.period / 1000).toFixed(2) + 's';
+      s.el.style.animationName = 'twinkle';
+      s.offset = dawn + s.period - now;
+      s.peak = now + 2 * s.period;
+    }
+
     function release() {
       group.remove();
       for (const s of walked) {
         s.linked = false;
-        s.el.classList.remove('held');
+        resumeTwinkle(s);
       }
       if (era === epoch) live--;
     }
