@@ -332,6 +332,7 @@
 
   <nav class="tabs fade" role="tablist" aria-label="Sections">
     <button class="tab" type="button" role="tab" id="tab-home" aria-controls="panel-home" aria-selected="true">Home</button>
+    <button class="tab" type="button" role="tab" id="tab-projects" aria-controls="panel-projects" aria-selected="false" tabindex="-1">Projects</button>
     <button class="tab" type="button" role="tab" id="tab-psetting" aria-controls="panel-psetting" aria-selected="false" tabindex="-1">psetting</button>
     <button class="tab" type="button" role="tab" id="tab-favorites" aria-controls="panel-favorites" aria-selected="false" tabindex="-1">Favorites</button>
   </nav>
@@ -384,6 +385,41 @@
         <a href="https://atouchofblurple.substack.com">Substack</a>
         <a href="https://open.spotify.com/user/lgb7vviljc8np0vd9se1nl0mu">Spotify</a>
         <a href="https://codeforces.com/profile/awesomeguy856">CF</a>
+      </div>
+    </div>
+
+  </section>
+
+  <section class="panel" role="tabpanel" id="panel-projects" aria-labelledby="tab-projects" tabindex="0" hidden>
+
+    <div class="row">
+      <h2 class="label">Relay</h2>
+      <div class="prose">
+        <p>
+          A browser co-op sci-fi roguelike we built at HackMIT 2026 (Entertainment track). Each
+          player types one sentence, and Claude turns them into a world: its rooms, monsters,
+          physics rules, and the notes the dead left behind. Then you fight through it together.
+          The model writes validated JSON, never code.
+        </p>
+        <p class="elsewhere">
+          <a href="https://relay-a3yv.onrender.com">Play</a>
+          <a href="https://github.com/Phronesis618/HackMIT2026">GitHub</a>
+        </p>
+      </div>
+    </div>
+
+    <div class="row">
+      <h2 class="label">Friends Market</h2>
+      <div class="prose">
+        <p>
+          Paper-money parimutuel betting for my friends. Anyone can open a yes/no or
+          multiple-choice market, and the whole pool is split among the winners in proportion
+          to stake. Built with Next.js, Prisma, Postgres, and Google sign-in.
+        </p>
+        <p class="elsewhere">
+          <a href="https://betting-woad.vercel.app">Site</a>
+          <a href="https://github.com/4dalols/betting">GitHub</a>
+        </p>
       </div>
     </div>
 
