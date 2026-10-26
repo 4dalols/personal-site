@@ -271,6 +271,46 @@
     color: var(--muted);
   }
 
+  /* --- background song: a quiet toggle beside the tagline --- */
+
+  .song {
+    appearance: none;
+    margin: 0 0 0 0.9rem;
+    padding: 0;
+    border: 0;
+    border-bottom: 1px solid transparent;
+    background: none;
+    color: var(--muted);
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    cursor: pointer;
+    transition: color 160ms ease, border-color 160ms ease, text-shadow 160ms ease;
+  }
+
+  .song:hover { color: var(--ink); }
+
+  .song[aria-pressed="true"] {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+    text-shadow: var(--glow);
+  }
+
+  .song:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 1px;
+  }
+
+  .song-player {
+    position: fixed;
+    left: -10000px;
+    top: 0;
+    width: 300px;
+    height: 166px;
+    border: 0;
+  }
+
   /* --- mobile --- */
 
   @media (max-width: 40rem) {
@@ -327,7 +367,7 @@
   <header class="fade">
     <h1>Jonathan He</h1>
     <!-- Keep this to five or six words. Say what you do, not how you feel about it. -->
-    <p class="tagline">nocturne</p>
+    <p class="tagline">nocturne <button class="song" type="button" aria-pressed="false" aria-label="Play Moon Goddess">&#9834; play</button></p>
   </header>
 
   <nav class="tabs fade" role="tablist" aria-label="Sections">
@@ -473,6 +513,8 @@
   <footer class="fade">Last updated September 2026</footer>
 
 </main>
+
+<iframe class="song-player" id="song-embed" title="Moon Goddess" aria-hidden="true" tabindex="-1" allow="autoplay" src="https://w.soundcloud.com/player/?url=https%3A%2F%2Fapi.soundcloud.com%2Ftracks%2F2311075361&amp;auto_play=false&amp;visual=false"></iframe>
 
 <script>
   /* --- stars and moon: a frame around the column, never behind the words --- */
@@ -845,6 +887,28 @@
 
   const fromHash = tabs.find((tab) => tab.id === 'tab-' + location.hash.slice(1));
   if (fromHash) select(fromHash);
+
+  /* --- background song: a hidden SoundCloud widget driven by the corner toggle --- */
+
+  const songButton = document.querySelector('.song');
+
+  function showSong(playing) {
+    songButton.setAttribute('aria-pressed', String(playing));
+    songButton.innerHTML = playing ? '&#9834; pause' : '&#9834; play';
+    songButton.setAttribute('aria-label', (playing ? 'Pause' : 'Play') + ' Moon Goddess');
+  }
+
+  function startSong() {
+    const widget = SC.Widget(document.getElementById('song-embed'));
+    widget.bind(SC.Widget.Events.PLAY, () => showSong(true));
+    widget.bind(SC.Widget.Events.PAUSE, () => showSong(false));
+    widget.bind(SC.Widget.Events.FINISH, () => {
+      widget.seekTo(0);
+      widget.play();
+    });
+    songButton.addEventListener('click', () => widget.toggle());
+  }
 </script>
+<script src="https://w.soundcloud.com/player/api.js" onload="startSong()" async></script>
 </body>
 </html>
