@@ -271,25 +271,19 @@
     color: var(--muted);
   }
 
-  /* --- background song: a quiet toggle in the corner --- */
+  /* --- background song: a quiet toggle beside the tagline --- */
 
   .song {
-    position: fixed;
-    right: 1.25rem;
-    bottom: 1.25rem;
-    z-index: 2;
     appearance: none;
-    margin: 0;
-    padding: 0.35rem 0;
+    margin: 0 0 0 0.9rem;
+    padding: 0;
     border: 0;
     border-bottom: 1px solid transparent;
     background: none;
     color: var(--muted);
-    font-family: var(--mono);
-    font-size: 0.6875rem;
-    font-weight: 500;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
     cursor: pointer;
     transition: color 160ms ease, border-color 160ms ease, text-shadow 160ms ease;
   }
@@ -373,7 +367,7 @@
   <header class="fade">
     <h1>Jonathan He</h1>
     <!-- Keep this to five or six words. Say what you do, not how you feel about it. -->
-    <p class="tagline">nocturne</p>
+    <p class="tagline">nocturne <button class="song" type="button" aria-pressed="false" aria-label="Play Moon Goddess">&#9834; play</button></p>
   </header>
 
   <nav class="tabs fade" role="tablist" aria-label="Sections">
@@ -520,7 +514,6 @@
 
 </main>
 
-<button class="song" type="button" aria-pressed="false" aria-label="Play Moon Goddess">&#9834; play</button>
 <iframe class="song-player" id="song-embed" title="Moon Goddess" aria-hidden="true" tabindex="-1" allow="autoplay" src="https://w.soundcloud.com/player/?url=https%3A%2F%2Fapi.soundcloud.com%2Ftracks%2F2311075361&amp;auto_play=false&amp;visual=false"></iframe>
 
 <script>
