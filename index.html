@@ -229,6 +229,29 @@
   .prose > p { margin: 0 0 1.1rem; }
   .prose > p:last-child { margin-bottom: 0; }
 
+  /* --- recommendations: title, then a mono line saying what it is --- */
+
+  .recs {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 1.1rem;
+  }
+
+  .recs .meta {
+    display: block;
+    margin-top: 0.2rem;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+  }
+
+  .recs .why {
+    margin: 0.35rem 0 0;
+  }
+
   /* --- links --- */
 
   a {
@@ -374,7 +397,7 @@
     <button class="tab" type="button" role="tab" id="tab-home" aria-controls="panel-home" aria-selected="true">Home</button>
     <button class="tab" type="button" role="tab" id="tab-projects" aria-controls="panel-projects" aria-selected="false" tabindex="-1">Projects</button>
     <button class="tab" type="button" role="tab" id="tab-psetting" aria-controls="panel-psetting" aria-selected="false" tabindex="-1">psetting</button>
-    <button class="tab" type="button" role="tab" id="tab-favorites" aria-controls="panel-favorites" aria-selected="false" tabindex="-1">Favorites</button>
+    <button class="tab" type="button" role="tab" id="tab-recs" aria-controls="panel-recs" aria-selected="false" tabindex="-1">Recommendations</button>
   </nav>
 
   <section class="panel fade" role="tabpanel" id="panel-home" aria-labelledby="tab-home" tabindex="0">
@@ -498,16 +521,50 @@
     </div>
   </section>
 
-  <section class="panel" role="tabpanel" id="panel-favorites" aria-labelledby="tab-favorites" tabindex="0" hidden>
+  <section class="panel" role="tabpanel" id="panel-recs" aria-labelledby="tab-recs" tabindex="0" hidden>
+
     <div class="row">
       <div class="prose">
-        <p>song artist: <a href="https://www.lynlapidmusic.com">Lyn Lapid</a></p>
-        <p>movie: <a href="https://www.imdb.com/title/tt5323662/">A Silent Voice</a></p>
-        <p>book: <a href="https://www.goodreads.com/en/book/show/135479.Cat_s_Cradle">Cat's Cradle</a></p>
-        <p>yt channel: <a href="https://www.youtube.com/channel/UCimiUgDLbi6P17BdaCZpVbg">exurb1a</a></p>
-        <p>wip...</p>
+        <p>Things I'd point a friend to. Still growing.</p>
       </div>
     </div>
+
+    <!-- EDIT: one <li> per rec. The .meta line is who/what it is; the optional .why line is a sentence on why. -->
+
+    <div class="row">
+      <h2 class="label">Listen</h2>
+      <ul class="recs">
+        <li>
+          <a href="https://www.lynlapidmusic.com">Lyn Lapid</a>
+          <span class="meta">artist</span>
+        </li>
+      </ul>
+    </div>
+
+    <div class="row">
+      <h2 class="label">Watch</h2>
+      <ul class="recs">
+        <li>
+          <a href="https://www.imdb.com/title/tt5323662/">A Silent Voice</a>
+          <span class="meta">film &middot; Naoko Yamada</span>
+        </li>
+        <li>
+          <a href="https://www.youtube.com/channel/UCimiUgDLbi6P17BdaCZpVbg">exurb1a</a>
+          <span class="meta">youtube</span>
+        </li>
+      </ul>
+    </div>
+
+    <div class="row">
+      <h2 class="label">Read</h2>
+      <ul class="recs">
+        <li>
+          <a href="https://www.goodreads.com/en/book/show/135479.Cat_s_Cradle">Cat's Cradle</a>
+          <span class="meta">novel &middot; Kurt Vonnegut</span>
+        </li>
+      </ul>
+    </div>
+
   </section>
 
   <footer class="fade">Last updated September 2026</footer>
@@ -885,7 +942,9 @@
     select(tabs[index], true);
   });
 
-  const fromHash = tabs.find((tab) => tab.id === 'tab-' + location.hash.slice(1));
+  const hashAliases = { favorites: 'recs' };
+  const hash = location.hash.slice(1);
+  const fromHash = tabs.find((tab) => tab.id === 'tab-' + (hashAliases[hash] || hash));
   if (fromHash) select(fromHash);
 
   /* --- background song: a hidden SoundCloud widget driven by the corner toggle --- */
