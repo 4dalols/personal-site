@@ -313,7 +313,7 @@
     left: -10000px;
     top: 0;
     width: 300px;
-    height: 80px;
+    height: 170px;
   }
 
   /* --- mobile --- */
@@ -894,31 +894,36 @@
   const fromHash = tabs.find((tab) => tab.id === 'tab-' + location.hash.slice(1));
   if (fromHash) select(fromHash);
 
-  /* --- background song: a hidden Spotify embed driven by the corner toggle --- */
+  /* --- background song: a hidden YouTube player driven by the corner toggle --- */
 
   const songButton = document.querySelector('.song');
-  let songController = null;
+  let songPlayer = null;
 
-  window.onSpotifyIframeApiReady = (IFrameAPI) => {
-    IFrameAPI.createController(
-      document.getElementById('song-embed'),
-      { uri: 'spotify:track:6sc8C4KqQxk9HwINkVMQpM', width: 300, height: 80 },
-      (controller) => {
-        songController = controller;
-        controller.addListener('playback_update', (event) => {
-          const playing = !event.data.isPaused;
-          songButton.setAttribute('aria-pressed', String(playing));
-          songButton.innerHTML = playing ? '&#9834; pause' : '&#9834; play';
-          songButton.setAttribute('aria-label', (playing ? 'Pause' : 'Play') + ' Moon Goddess');
-        });
-      }
-    );
+  function showSong(playing) {
+    songButton.setAttribute('aria-pressed', String(playing));
+    songButton.innerHTML = playing ? '&#9834; pause' : '&#9834; play';
+    songButton.setAttribute('aria-label', (playing ? 'Pause' : 'Play') + ' Moon Goddess');
+  }
+
+  window.onYouTubeIframeAPIReady = () => {
+    songPlayer = new YT.Player('song-embed', {
+      width: 300,
+      height: 170,
+      videoId: 'FS8YcM4rYFY',
+      playerVars: { loop: 1, playlist: 'FS8YcM4rYFY', controls: 0, playsinline: 1 },
+      events: {
+        onStateChange: (event) => showSong(event.data === YT.PlayerState.PLAYING || event.data === YT.PlayerState.BUFFERING),
+      },
+    });
   };
 
   songButton.addEventListener('click', () => {
-    if (songController) songController.togglePlay();
+    if (!songPlayer || !songPlayer.getPlayerState) return;
+    const state = songPlayer.getPlayerState();
+    if (state === YT.PlayerState.PLAYING || state === YT.PlayerState.BUFFERING) songPlayer.pauseVideo();
+    else songPlayer.playVideo();
   });
 </script>
-<script src="https://open.spotify.com/embed/iframe-api/v1" async></script>
+<script src="https://www.youtube.com/iframe_api" async></script>
 </body>
 </html>
