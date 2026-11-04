@@ -229,6 +229,29 @@
   .prose > p { margin: 0 0 1.1rem; }
   .prose > p:last-child { margin-bottom: 0; }
 
+  /* --- recommendations: title, then a mono line saying what it is --- */
+
+  .recs {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 1.1rem;
+  }
+
+  .recs .meta {
+    display: block;
+    margin-top: 0.2rem;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+  }
+
+  .recs .why {
+    margin: 0.35rem 0 0;
+  }
+
   /* --- links --- */
 
   a {
@@ -374,7 +397,7 @@
     <button class="tab" type="button" role="tab" id="tab-home" aria-controls="panel-home" aria-selected="true">Home</button>
     <button class="tab" type="button" role="tab" id="tab-projects" aria-controls="panel-projects" aria-selected="false" tabindex="-1">Projects</button>
     <button class="tab" type="button" role="tab" id="tab-psetting" aria-controls="panel-psetting" aria-selected="false" tabindex="-1">psetting</button>
-    <button class="tab" type="button" role="tab" id="tab-favorites" aria-controls="panel-favorites" aria-selected="false" tabindex="-1">Favorites</button>
+    <button class="tab" type="button" role="tab" id="tab-recs" aria-controls="panel-recs" aria-selected="false" tabindex="-1">Recs</button>
   </nav>
 
   <section class="panel fade" role="tabpanel" id="panel-home" aria-labelledby="tab-home" tabindex="0">
@@ -450,6 +473,23 @@
     </div>
 
     <div class="row">
+      <h2 class="label">Dynasys</h2>
+      <div class="prose">
+        <p>
+          A browser playground of 30-odd interactive dynamical systems: boids and starling
+          murmurations, slime mold, Lenia, Gray–Scott, strange attractors, double pendulums,
+          falling sand, phantom traffic jams, and more. Every world has live sliders, presets,
+          and a short explainer, and the parameters live in the URL so you can share a setup.
+          Plain TypeScript and Canvas, no runtime dependencies.
+        </p>
+        <p class="elsewhere">
+          <a href="https://dynasys.vercel.app">Play</a>
+          <a href="https://github.com/4dalols/dynasys">GitHub</a>
+        </p>
+      </div>
+    </div>
+
+    <div class="row">
       <h2 class="label">Relay</h2>
       <div class="prose">
         <p>
@@ -473,9 +513,31 @@
           multiple-choice market, and the whole pool is split among the winners in proportion
           to stake. Built with Next.js, Prisma, Postgres, and Google sign-in.
         </p>
+        <p>
+          It also hosts two party games. Price Is Right has everyone anonymously answer
+          questions like "how many siblings do you have?", then guess the group total. Trade or
+          Tighten is a market-making game: players bid for information about a hidden sum,
+          tighten each other's spreads, then trade against the tightest market.
+        </p>
         <p class="elsewhere">
           <a href="https://betting-woad.vercel.app">Site</a>
           <a href="https://github.com/4dalols/betting">GitHub</a>
+        </p>
+      </div>
+    </div>
+
+    <div class="row">
+      <h2 class="label">PTCG Agent</h2>
+      <div class="prose">
+        <p>
+          A Pokémon TCG bot for Kaggle's
+          <a href="https://www.kaggle.com/competitions/the-pokemon-company-ptcg-ai-battle-challenge-playground/overview">PTCG AI Battle Challenge</a>.
+          It plays candidate moves forward in the game engine with the hidden cards sampled,
+          scores the outcomes with a learned value model, and picked its deck by benchmarking
+          candidate lists against the decks people actually play on the ladder.
+        </p>
+        <p class="elsewhere">
+          <a href="https://github.com/4dalols/pokemon-agent">GitHub</a>
         </p>
       </div>
     </div>
@@ -498,19 +560,53 @@
     </div>
   </section>
 
-  <section class="panel" role="tabpanel" id="panel-favorites" aria-labelledby="tab-favorites" tabindex="0" hidden>
+  <section class="panel" role="tabpanel" id="panel-recs" aria-labelledby="tab-recs" tabindex="0" hidden>
+
     <div class="row">
       <div class="prose">
-        <p>song artist: <a href="https://www.lynlapidmusic.com">Lyn Lapid</a></p>
-        <p>movie: <a href="https://www.imdb.com/title/tt5323662/">A Silent Voice</a></p>
-        <p>book: <a href="https://www.goodreads.com/en/book/show/135479.Cat_s_Cradle">Cat's Cradle</a></p>
-        <p>yt channel: <a href="https://www.youtube.com/channel/UCimiUgDLbi6P17BdaCZpVbg">exurb1a</a></p>
-        <p>wip...</p>
+        <p>Things I'd point a friend to. Still growing.</p>
       </div>
     </div>
+
+    <!-- EDIT: one <li> per rec. The .meta line is who/what it is; the optional .why line is a sentence on why. -->
+
+    <div class="row">
+      <h2 class="label">Listen</h2>
+      <ul class="recs">
+        <li>
+          <a href="https://www.lynlapidmusic.com">Lyn Lapid</a>
+          <span class="meta">artist</span>
+        </li>
+      </ul>
+    </div>
+
+    <div class="row">
+      <h2 class="label">Watch</h2>
+      <ul class="recs">
+        <li>
+          <a href="https://www.imdb.com/title/tt5323662/">A Silent Voice</a>
+          <span class="meta">film &middot; Naoko Yamada</span>
+        </li>
+        <li>
+          <a href="https://www.youtube.com/channel/UCimiUgDLbi6P17BdaCZpVbg">exurb1a</a>
+          <span class="meta">youtube</span>
+        </li>
+      </ul>
+    </div>
+
+    <div class="row">
+      <h2 class="label">Read</h2>
+      <ul class="recs">
+        <li>
+          <a href="https://www.goodreads.com/en/book/show/135479.Cat_s_Cradle">Cat's Cradle</a>
+          <span class="meta">novel &middot; Kurt Vonnegut</span>
+        </li>
+      </ul>
+    </div>
+
   </section>
 
-  <footer class="fade">Last updated September 2026</footer>
+  <footer class="fade">Last updated November 2026</footer>
 
 </main>
 
@@ -885,7 +981,9 @@
     select(tabs[index], true);
   });
 
-  const fromHash = tabs.find((tab) => tab.id === 'tab-' + location.hash.slice(1));
+  const hashAliases = { favorites: 'recs' };
+  const hash = location.hash.slice(1);
+  const fromHash = tabs.find((tab) => tab.id === 'tab-' + (hashAliases[hash] || hash));
   if (fromHash) select(fromHash);
 
   /* --- background song: a hidden SoundCloud widget driven by the corner toggle --- */
