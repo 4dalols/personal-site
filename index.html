@@ -72,9 +72,13 @@
     height: 7px;
     opacity: 0.35;
     animation: twinkle 4s ease-in-out infinite alternate;
+    /* --near: how close the cursor is, 0 far away to 1 right on top */
+    scale: calc(1 + 0.8 * var(--near, 0));
+    /* and heats from pale blue to white, halo and all */
+    --tint: calc(100% * var(--near, 0));
     filter:
-      drop-shadow(0 0 2px rgba(228, 228, 255, 0.7))
-      drop-shadow(0 0 6px rgba(150, 150, 255, 0.5));
+      drop-shadow(0 0 2px color-mix(in oklab, rgba(228, 228, 255, 0.7), rgba(255, 255, 255, 0.95) var(--tint)))
+      drop-shadow(0 0 6px color-mix(in oklab, rgba(150, 150, 255, 0.5), rgba(205, 205, 255, 0.75) var(--tint)));
   }
 
   /* the point shape lives on a child so the parent's glow isn't clipped away */
@@ -82,7 +86,7 @@
     content: '';
     position: absolute;
     inset: 0;
-    background: var(--ink);
+    background: color-mix(in oklab, var(--ink), #fff var(--tint, 0%));
     clip-path: polygon(
       50% 0%, 61% 35%, 98% 35%, 68% 57%,
       79% 91%, 50% 70%, 21% 91%, 32% 57%,
@@ -91,7 +95,8 @@
   }
 
   @keyframes twinkle {
-    from { opacity: 0.12; }
+    /* a star by the cursor never dims all the way */
+    from { opacity: calc(0.12 + 0.78 * var(--near, 0)); }
     to   { opacity: 0.9; }
   }
 
@@ -667,7 +672,9 @@
       x: x + size / 2,
       y: y + size / 2,
       period: period * 1000,
-      offset: offset * 1000
+      offset: offset * 1000,
+      near: 0,
+      shown: 0
     });
     return el;
   }
@@ -941,7 +948,41 @@
     hop(first, second);
   }
 
+  /* --- the cursor: stars near it brighten and swell, and settle back once it moves on --- */
+
+  const NEAR = 150;     /* px within which a star notices the cursor */
+  const EASE = 0.12;    /* how much of the gap to close each frame */
+  let pointer = null;   /* viewport coordinates, so scrolling alone still counts */
+
+  addEventListener('pointermove', (event) => {
+    pointer = { x: event.clientX, y: event.clientY };
+  }, { passive: true });
+  document.documentElement.addEventListener('pointerleave', () => { pointer = null; });
+  addEventListener('blur', () => { pointer = null; });
+  addEventListener('pointerup', (event) => {
+    if (event.pointerType !== 'mouse') pointer = null;
+  });
+
+  function notice() {
+    const px = pointer && pointer.x + scrollX;
+    const py = pointer && pointer.y + scrollY;
+    for (const s of twinklers) {
+      let target = 0;
+      if (pointer) {
+        const d = Math.hypot(s.x - px, s.y - py);
+        if (d < NEAR) target = (1 - d / NEAR) ** 2;
+      }
+      s.near += (target - s.near) * EASE;
+      if (s.near < 0.002) s.near = 0;
+      if (Math.abs(s.near - s.shown) < 0.005 && !(s.near === 0 && s.shown !== 0)) continue;
+      s.shown = s.near;
+      if (s.near) s.el.style.setProperty('--near', s.near.toFixed(3));
+      else s.el.style.removeProperty('--near');
+    }
+  }
+
   function tick(now) {
+    notice();
     for (const s of twinklers) {
       if (s.peak > now) continue;
       s.peak += 2 * s.period;
