@@ -74,9 +74,11 @@
     animation: twinkle 4s ease-in-out infinite alternate;
     /* --near: how close the cursor is, 0 far away to 1 right on top */
     scale: calc(1 + 0.8 * var(--near, 0));
+    /* and warms from pale blue toward gold, halo and all */
+    --warmth: calc(100% * var(--near, 0));
     filter:
-      drop-shadow(0 0 2px rgba(228, 228, 255, 0.7))
-      drop-shadow(0 0 6px rgba(150, 150, 255, 0.5));
+      drop-shadow(0 0 2px color-mix(in oklab, rgba(228, 228, 255, 0.7), rgba(255, 214, 140, 0.85) var(--warmth)))
+      drop-shadow(0 0 6px color-mix(in oklab, rgba(150, 150, 255, 0.5), rgba(255, 170, 90, 0.6) var(--warmth)));
   }
 
   /* the point shape lives on a child so the parent's glow isn't clipped away */
@@ -84,7 +86,7 @@
     content: '';
     position: absolute;
     inset: 0;
-    background: var(--ink);
+    background: color-mix(in oklab, var(--ink), #ffd98c var(--warmth, 0%));
     clip-path: polygon(
       50% 0%, 61% 35%, 98% 35%, 68% 57%,
       79% 91%, 50% 70%, 21% 91%, 32% 57%,
