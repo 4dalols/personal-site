@@ -786,7 +786,6 @@
     lines.replaceChildren();
     epoch++;
     live = 0;
-    chasing = null;
 
     const stars = document.createDocumentFragment();
 
@@ -831,12 +830,6 @@
   const SPEED = 0.10;  /* px per ms, the same for every stretch */
   const AT_ONCE = 5;
 
-  /* a figure the cursor set off chases it instead of the twinkles */
-  const CHASE_HOPS = 14;     /* the most stars it will run through */
-  const CHASE_SPEED = 0.45;  /* px per ms, quick enough to keep up */
-  const LINGER = 1200;       /* ms it waits on a still cursor before it fades */
-  let chasing = null;
-
   let dawn = performance.now();
   let epoch = 0;
   let live = 0;
@@ -876,37 +869,13 @@
 
   /* a figure holds every line it has drawn, then lets go of all of them
      at once, so the whole shape is on the sky before it fades */
-  /* the star that takes the line closest to the cursor, from those in reach */
-  function toward(from) {
-    if (!pointer) return null;
-    const cx = pointer.x + scrollX;
-    const cy = pointer.y + scrollY;
-    let best = null;
-    let closest = Math.hypot(from.x - cx, from.y - cy) - 10;
-    for (const to of twinklers) {
-      if (to === from || to.linked) continue;
-      const span = Math.hypot(to.x - from.x, to.y - from.y);
-      if (span < 12 || span > REACH) continue;
-      const left = Math.hypot(to.x - cx, to.y - cy);
-      if (left >= closest || !unobstructed(from, to)) continue;
-      closest = left;
-      best = to;
-    }
-    return best;
-  }
-
-  /* with no second star, the figure chases the cursor from the first */
   function figure(first, second) {
     const group = document.createElementNS(lines.namespaceURI, 'g');
-    const chase = !second;
-    const walked = chase ? [first] : [first, second];
+    const walked = [first, second];
     /* a redraw retires every figure mid-flight, so only count down our own */
     const era = epoch;
-    let idle = performance.now();
     lines.appendChild(group);
-    first.linked = true;
-    if (second) second.linked = true;
-    if (chase) chasing = group;
+    first.linked = second.linked = true;
     /* the star it set out from is at its peak: hold it there */
     first.el.classList.add('held');
     live++;
@@ -930,7 +899,6 @@
         resumeTwinkle(s);
       }
       if (era === epoch) live--;
-      if (chasing === group) chasing = null;
     }
 
     function hop(from, to) {
@@ -949,31 +917,19 @@
           { strokeDashoffset: span, opacity: 0.1 },
           { strokeDashoffset: 0, opacity: 0.5 }
         ],
-        { duration: span / (chase ? CHASE_SPEED : SPEED), easing: 'linear', fill: 'forwards' }
+        { duration: span / SPEED, easing: 'linear', fill: 'forwards' }
       ).finished.then(() => {
         /* the star it reached holds its brightness for as long as the figure does */
         to.el.classList.add('held');
-        idle = performance.now();
         onward();
       }, release);
     }
 
     function onward() {
-      let next;
-      if (chase) {
-        next = walked.length - 1 < CHASE_HOPS && era === epoch ? toward(walked.at(-1)) : null;
-        /* a still cursor gets a moment to move on before the figure gives up */
-        if (!next && pointer && era === epoch && walked.length - 1 < CHASE_HOPS &&
-            performance.now() - idle < LINGER) {
-          setTimeout(onward, 60);
-          return;
-        }
-      } else {
-        const owed = walked.length - 1 < BOUNCES;
-        next = walked.length - 1 < HOPS
-          ? partnerFor(walked.at(-1), performance.now(), owed)
-          : null;
-      }
+      const owed = walked.length - 1 < BOUNCES;
+      const next = walked.length - 1 < HOPS
+        ? partnerFor(walked.at(-1), performance.now(), owed)
+        : null;
 
       if (next) {
         next.linked = true;
@@ -988,8 +944,7 @@
       ).finished.then(release, release);
     }
 
-    if (chase) onward();
-    else hop(first, second);
+    hop(first, second);
   }
 
   /* --- the cursor: stars near it brighten and swell, and settle back once it moves on;
@@ -1018,9 +973,12 @@
         const d = Math.hypot(s.x - px, s.y - py);
         if (d < NEAR) target = (1 - d / NEAR) ** 2;
         /* one figure per visit: the cursor has to wander off before it can spark another */
-        if (d < TOUCH && s.armed && !s.linked && !chasing) {
-          s.armed = false;
-          figure(s, null);
+        if (d < TOUCH && s.armed && !s.linked) {
+          const to = partnerFor(s, now, true);
+          if (to) {
+            s.armed = false;
+            figure(s, to);
+          }
         }
         if (d > NEAR / 2) s.armed = true;
       } else {
