@@ -672,7 +672,8 @@
       period: period * 1000,
       offset: offset * 1000,
       near: 0,
-      shown: 0
+      shown: 0,
+      armed: true
     });
     return el;
   }
@@ -946,10 +947,12 @@
     hop(first, second);
   }
 
-  /* --- the cursor: stars near it brighten and swell, and settle back once it moves on --- */
+  /* --- the cursor: stars near it brighten and swell, and settle back once it moves on;
+     touch one and a constellation starts from it --- */
 
   const NEAR = 150;     /* px within which a star notices the cursor */
   const EASE = 0.12;    /* how much of the gap to close each frame */
+  const TOUCH = 28;     /* px: a cursor this close to a star sets a figure off from it */
   let pointer = null;   /* viewport coordinates, so scrolling alone still counts */
 
   addEventListener('pointermove', (event) => {
@@ -961,7 +964,7 @@
     if (event.pointerType !== 'mouse') pointer = null;
   });
 
-  function notice() {
+  function notice(now) {
     const px = pointer && pointer.x + scrollX;
     const py = pointer && pointer.y + scrollY;
     for (const s of twinklers) {
@@ -969,6 +972,17 @@
       if (pointer) {
         const d = Math.hypot(s.x - px, s.y - py);
         if (d < NEAR) target = (1 - d / NEAR) ** 2;
+        /* one figure per visit: the cursor has to wander off before it can spark another */
+        if (d < TOUCH && s.armed && !s.linked) {
+          const to = partnerFor(s, now, true);
+          if (to) {
+            s.armed = false;
+            figure(s, to);
+          }
+        }
+        if (d > NEAR / 2) s.armed = true;
+      } else {
+        s.armed = true;
       }
       s.near += (target - s.near) * EASE;
       if (s.near < 0.002) s.near = 0;
@@ -980,7 +994,7 @@
   }
 
   function tick(now) {
-    notice();
+    notice(now);
     for (const s of twinklers) {
       if (s.peak > now) continue;
       s.peak += 2 * s.period;
